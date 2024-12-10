@@ -55,6 +55,10 @@ export function transformDeclarations({
         }
       }
 
+      if (path.node.specifiers) {
+        return;
+      }
+
       throw new Error(
         `Unrecognized import kind: ${JSON.stringify(path.node.importKind)}`
       );
