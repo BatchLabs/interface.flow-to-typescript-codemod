@@ -17,50 +17,7 @@ import { migrateQualifiedIdentifier } from "./migrate/qualified-identifier";
 import { annotateParamsWithFlowTypeAtPos } from "./flow/annotate-params";
 import { functionVisitor } from "./function-visitor";
 import { TransformerInput } from "./transformer";
-import { ReactTypes } from "./utils/type-mappings";
 import { flowTypeAtPos } from "./flow/type-at-pos";
-
-/**
- * Rename React imports for TypeScript
- */
-const updateReactImports = (
-  node: t.ImportDeclaration,
-  specifier: t.ImportSpecifier
-) => {
-  if (
-    node.source.value === "react" &&
-    (specifier.importKind === "type" || node.importKind === "type")
-  ) {
-    // `import type {Node} from 'react'` => `import {ReactNode} from 'react'`
-    if (
-      specifier.type === "ImportSpecifier" &&
-      specifier.imported.type === "Identifier" &&
-      specifier.imported.name in ReactTypes
-    ) {
-      specifier.imported.name =
-        ReactTypes[specifier.imported.name as keyof typeof ReactTypes];
-    }
-    // `import {type Node} from 'react'` => `import {ReactNode} from 'react'`
-    if (
-      specifier.type === "ImportSpecifier" &&
-      specifier.local.type === "Identifier" &&
-      specifier.local.name in ReactTypes
-    ) {
-      specifier.local.name =
-        ReactTypes[specifier.local.name as keyof typeof ReactTypes];
-    }
-    // `import type {ReactNode as ReactNode} from 'react'` => `import {ReactNode} from 'react'`
-    if (
-      specifier.type === "ImportSpecifier" &&
-      specifier.local.type === "Identifier" &&
-      specifier.imported.type === "Identifier" &&
-      specifier.imported.name === specifier.local.name
-    ) {
-      // @ts-expect-error local is not optional, but setting equal doesn't work
-      delete specifier.local;
-    }
-  }
-};
 
 export function transformDeclarations({
   reporter,
@@ -96,25 +53,6 @@ export function transformDeclarations({
             path.node.source.value = value.slice(0, -4);
           }
         }
-      }
-
-      // `import {...} from`
-      if (path.node.specifiers) {
-        for (const specifier of path.node.specifiers) {
-          if (
-            specifier.type === "ImportSpecifier" &&
-            (specifier.importKind === "type" || path.node.importKind === "type")
-          ) {
-            updateReactImports(path.node, specifier);
-
-            // `import {type X} from` => `import {X} from`
-            if (specifier.importKind === "type") {
-              specifier.importKind = null;
-            }
-          }
-        }
-
-        return;
       }
 
       throw new Error(
